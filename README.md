@@ -1,3 +1,11 @@
+## Demo
+
+### Use with GTK
+![gtk](https://github.com/qingxiang-jia/ibus-cloud-pinyin/assets/5571586/4bec71f0-ca41-4928-b74d-83d42cfdad80)
+
+### Use with kimpanel
+![kimpanel](https://github.com/qingxiang-jia/ibus-cloud-pinyin/assets/5571586/73ae1973-dbb9-4c46-a391-8cdc358268ed)
+
 ## What is this?
 
 This is a spin-off of the Full Cloud Pinyin [project](https://github.com/qingxiang-jia/full-cloud-pinyin). The idea is, since all communication with IBus is done via DBus, we don't need to rely on any IBus libraries to implement an input method (in this case, a cloud one). Instead, we can leverage on DBus libraries such as [zbus](https://github.com/dbus2/zbus). The benefit of this approach is:
