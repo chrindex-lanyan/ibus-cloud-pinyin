@@ -16,6 +16,11 @@ impl NumberService {
     }
 
     pub async fn handle_number(&self, key_content : KeyContent) {
+
+        if key_content.flags.is_release {
+            return 
+        }
+
         let n = key_content.key
             .to_usize()
             .expect("This key cannot be converted to a usize.");

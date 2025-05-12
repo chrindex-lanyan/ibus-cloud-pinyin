@@ -177,6 +177,11 @@ impl Dispatcher {
     }
 
     pub async fn handle_select(&self, key_content: KeyContent) -> bool {
+        
+        if key_content.flags.is_release {
+            return true
+        }
+
         self.preedit_svc.clear().await;
 
         let i = key_content.key.to_usize().expect("Failed to conver the key to usize.");

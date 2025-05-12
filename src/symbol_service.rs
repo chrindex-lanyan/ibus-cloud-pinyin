@@ -16,6 +16,11 @@ impl SymbolService {
     }
 
     pub async fn handle_symbol(&self, key_content:KeyContent) {
+
+        if key_content.flags.is_release {
+            return 
+        }
+
         let fw_puctuation = key_content.key
             .to_full_width_string()
             .expect("This key cannot be converted to fullwidth string.");
