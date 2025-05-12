@@ -17,10 +17,72 @@ impl ModeSwitcher {
         }
     }
 
-    pub async fn process_key_event(
-        &self,
+    pub async fn process_key_event (&self,
         keyval: u32,
         keycode: u32,
+        state: u32,
+    ) -> ModeSwitcherReturn {
+
+        self.process_key_event_new(keyval, keycode, state).await
+    }
+
+    pub async fn process_key_event_new(
+        &self,
+        keyval: u32,
+        _keycode: u32,
+        state: u32,
+    ) -> ModeSwitcherReturn {
+
+        let key = match Key::from_u32(keyval) {
+            Some(key) => key,
+            None => {
+                return ModeSwitcherReturn::Done(false);
+            },
+        };
+        let last = self.last();
+        
+        self.set_last(key);
+
+        // State flags
+        let flags = self.decode_flag(state);
+        let is_modifier = flags.is_ctrl
+            || flags.is_alt
+            || flags.is_super
+            || flags.is_hyper
+            || flags.is_meta
+            || flags.is_lock;
+
+        //println!("last={:?}, current={:?}, flags={:?}", &last, &key, &flags);
+
+        if is_modifier || !flags.is_release {
+            // User control like ctrl+v that has nothing to do with us.
+            return ModeSwitcherReturn::Done(false);
+        }
+
+        if (key == Key::Shift) 
+            && (flags.is_release) 
+            && (last == Key::Shift) 
+        {
+            match self.mode() {
+                Mode::English => {
+                    self.set_mode(Mode::Pinyin);
+                    //println!("EN->PY");
+                },
+                Mode::Pinyin => {
+                    self.set_mode(Mode::English);
+                    //println!("PY->EN");
+                },
+            }
+            return ModeSwitcherReturn::Continue(key, true);
+        }
+
+        return ModeSwitcherReturn::Done(false);
+    }
+
+    pub async fn process_key_event_old(
+        &self,
+        keyval: u32,
+        _keycode: u32,
         state: u32,
     ) -> ModeSwitcherReturn {
         // State flags
@@ -138,6 +200,7 @@ enum Mode {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 struct Flags {
     is_shift: bool,
     is_lock: bool,

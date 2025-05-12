@@ -205,7 +205,7 @@ pub struct IBusText {
 impl IBusText {
     pub fn from_str_ref(content: &str) -> IBusText {
         IBusText {
-            text: content.clone().to_owned(),
+            text: content.to_string()
         }
     }
 

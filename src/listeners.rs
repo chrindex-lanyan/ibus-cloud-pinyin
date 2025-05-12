@@ -12,7 +12,7 @@ pub struct FactoryListener {}
 
 #[dbus_interface(name = "org.freedesktop.IBus.Factory")]
 impl FactoryListener {
-    pub fn create_engine(&self, name: &str) -> ObjectPath {
+    pub fn create_engine(&self, _name: &str) -> ObjectPath {
         println!("create_engine called by IBus.");
         ObjectPath::from_str_unchecked("/org/freedesktop/IBus/Engine/FcPinyin")
     }
