@@ -1,6 +1,6 @@
 use zbus::Connection;
 
-use crate::{dispatcher::Dispatcher, mode_switcher::ModeSwitcher};
+use crate::{dispatcher::Dispatcher, mode_switcher::{ModeSwitcher, ModeSwitcherReturn}};
 
 pub struct Pipeline {
     mode_switcher: ModeSwitcher,
@@ -22,10 +22,10 @@ impl Pipeline {
             .await;
 
         match output {
-            super::mode_switcher::ModeSwitcherReturn::Continue(key, should_reset) => {
-                return self.dispatcher.on_input(key, should_reset).await;
-            }
-            super::mode_switcher::ModeSwitcherReturn::Done(has_handled) => return has_handled,
+            ModeSwitcherReturn::Continue(key, should_reset) => 
+                self.dispatcher.on_input(key, should_reset).await,
+            ModeSwitcherReturn::Done(has_handled) => 
+                has_handled,
         }
     }
 }

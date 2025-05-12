@@ -41,8 +41,6 @@ impl ModeSwitcher {
         };
         let last = self.last();
         
-        self.set_last(key);
-
         // State flags
         let flags = self.decode_flag(state);
         let is_modifier = flags.is_ctrl
@@ -52,7 +50,11 @@ impl ModeSwitcher {
             || flags.is_meta
             || flags.is_lock;
 
-        //println!("last={:?}, current={:?}, flags={:?}", &last, &key, &flags);
+        if !flags.is_release {
+            self.set_last(key);
+        }
+
+        println!("last={:?}, current={:?}, is_modifier={}", &last, &key, is_modifier);
 
         if is_modifier || !flags.is_release {
             // User control like ctrl+v that has nothing to do with us.
@@ -77,70 +79,9 @@ impl ModeSwitcher {
         }
 
         match self.mode() {
-            Mode::English => ModeSwitcherReturn::Done(false),
+            Mode::English => ModeSwitcherReturn::Done(true),
             Mode::Pinyin => ModeSwitcherReturn::Continue(key, false),
         }
-    }
-
-    pub async fn process_key_event_old(
-        &self,
-        keyval: u32,
-        _keycode: u32,
-        state: u32,
-    ) -> ModeSwitcherReturn {
-        // State flags
-        let flags = self.decode_flag(state);
-        let key = Key::from_u32(keyval);
-        if key.is_none() {
-            return ModeSwitcherReturn::Done(false);
-        }
-        let key = key.expect("Unknown key.");
-
-        let mut should_reset = false;
-
-        if key == Key::Shift && self.last() == Key::Shift {
-            let prev_mode = self.mode();
-            if prev_mode == Mode::Pinyin {
-                // If *now* we are in English mode, reset the engine.
-                should_reset = true;
-            }
-
-            if prev_mode == Mode::English {
-                println!("EN -> PY");
-                self.set_mode(Mode::Pinyin);
-            } else {
-                println!("PY -> EN");
-                self.set_mode(Mode::English);
-            }
-        }
-
-        self.set_last(key);
-
-        if key == Key::Shift {
-            if !flags.is_release {
-                println!("Shift IN");
-            } else {
-                println!("Shift OUT");
-            }
-        } else {
-            if !flags.is_release {
-                println!("{:#?}, {}", key, flags);
-            }
-        }
-
-        let is_modifier = flags.is_ctrl
-            || flags.is_alt
-            || flags.is_super
-            || flags.is_hyper
-            || flags.is_meta
-            || flags.is_lock;
-
-        if key == Key::Shift || flags.is_release || is_modifier || self.mode() == Mode::English {
-            // User control like ctrl+v that has nothing to do with us.
-            return ModeSwitcherReturn::Done(false);
-        }
-
-        return ModeSwitcherReturn::Continue(key, should_reset);
     }
 
     fn mode(&self) -> Mode {

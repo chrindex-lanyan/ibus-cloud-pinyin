@@ -68,6 +68,7 @@ impl Dispatcher {
             | Key::x
             | Key::y
             | Key::z => return self.handle_pinyin(key).await,
+
             Key::_0
             | Key::_1
             | Key::_2
@@ -85,6 +86,7 @@ impl Dispatcher {
                     return true;
                 }
             }
+
             Key::Comma
             | Key::Period
             | Key::SemiColon
@@ -100,6 +102,7 @@ impl Dispatcher {
                 self.symbol_svc.handle_symbol(key).await;
                 return true;
             }
+
             Key::Space
             | Key::Enter
             | Key::Minus
@@ -110,7 +113,9 @@ impl Dispatcher {
             | Key::Right
             | Key::Backspace
             | Key::Escape => return self.handle_control(key).await,
+            
             Key::Shift | Key::Ctrl | Key::Alt => panic!("Unexpected control keys received."),
+            
             Key::A
             | Key::B
             | Key::C
