@@ -12,8 +12,8 @@ use super::{
 };
 
 pub struct Dispatcher {
-    candidate_svc: CandidateService,
-    preedit_svc: PreeditService,
+    pub candidate_svc: CandidateService,
+    pub preedit_svc: PreeditService,
     symbol_svc: SymbolService,
     number_svc: NumberService,
     client: CloudPinyinClient,
@@ -35,12 +35,8 @@ impl Dispatcher {
         }
     }
 
-    pub async fn on_input(&self, key: Key, should_reset: bool) -> bool {
-        if should_reset {
-            self.candidate_svc.clear().await;
-            return true;
-        }
-
+    pub async fn on_input(&self, key: Key) -> bool {
+        
         match key {
             Key::a
             | Key::b

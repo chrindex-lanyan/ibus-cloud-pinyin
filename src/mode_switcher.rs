@@ -12,7 +12,7 @@ pub struct ModeSwitcher {
 impl ModeSwitcher {
     pub fn new() -> ModeSwitcher {
         ModeSwitcher {
-            mode: Arc::new(Mutex::new(Mode::Pinyin)),
+            mode: Arc::new(Mutex::new(Mode::English)),
             last: Arc::new(Mutex::new(Key::a)),
         }
     }
@@ -49,17 +49,21 @@ impl ModeSwitcher {
             || flags.is_hyper
             || flags.is_meta
             || flags.is_lock;
-
-        if !flags.is_release {
-            self.set_last(key);
-        }
-
-        //println!("last={:?}, current={:?}, is_modifier={}", &last, &key, is_modifier);
-
-        if is_modifier || !flags.is_release {
+        
+        if is_modifier {
             // User control like ctrl+v that has nothing to do with us.
             return ModeSwitcherReturn::Done(false);
         }
+
+        if !flags.is_release {
+            self.set_last(key);
+            
+            if self.mode() == Mode::Pinyin {
+                return ModeSwitcherReturn::Done(true);
+            }
+        }
+
+        //println!("last={:?}, current={:?}, is_modifier={}", &last, &key, is_modifier);
 
         if (key == Key::Shift) 
             && (flags.is_release) 
@@ -75,12 +79,12 @@ impl ModeSwitcher {
                     //println!("PY->EN");
                 },
             }
-            return ModeSwitcherReturn::Continue(key, true);
+            return ModeSwitcherReturn::SwitchMode;
         }
 
         match self.mode() {
-            Mode::English => ModeSwitcherReturn::Done(true),
-            Mode::Pinyin => ModeSwitcherReturn::Continue(key, false),
+            Mode::English => ModeSwitcherReturn::Done(false),
+            Mode::Pinyin => ModeSwitcherReturn::Continue(key),
         }
     }
 
@@ -133,8 +137,9 @@ impl ModeSwitcher {
 
 #[derive(Clone, Copy)]
 pub enum ModeSwitcherReturn {
-    Continue(Key, bool),
+    Continue(Key),
     Done(bool),
+    SwitchMode,
 }
 
 #[derive(Clone, Copy, PartialEq)]

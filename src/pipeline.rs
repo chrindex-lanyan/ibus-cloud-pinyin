@@ -22,10 +22,15 @@ impl Pipeline {
             .await;
 
         match output {
-            ModeSwitcherReturn::Continue(key, should_reset) => 
-                self.dispatcher.on_input(key, should_reset).await,
+            ModeSwitcherReturn::Continue(key) => 
+                        self.dispatcher.on_input(key).await,
             ModeSwitcherReturn::Done(has_handled) => 
-                has_handled,
+                        has_handled,
+            ModeSwitcherReturn::SwitchMode => {
+                self.dispatcher.preedit_svc.clear().await;
+                self.dispatcher.candidate_svc.clear().await;
+                true
+            },
         }
     }
 }

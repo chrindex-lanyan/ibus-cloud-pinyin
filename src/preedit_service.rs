@@ -65,7 +65,18 @@ impl PreeditService {
     }
 
     pub async fn clear(&self) {
+        
         let mut state = self.state.lock().await;
         state.preedit.clear();
+        // 获取空字符串用于 IBus 调用
+        let preedit: String = state.preedit.iter().cloned().collect();
+        drop(state);
+
+        // 更新 IBus 界面 
+        self.ibus
+            .lock()
+            .await
+            .update_preedit_text(&preedit, 0, false) // 清空文本，光标位置0，设为不可见
+            .await;
     }
 }
