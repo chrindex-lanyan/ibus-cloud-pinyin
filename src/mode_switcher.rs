@@ -66,17 +66,20 @@ impl ModeSwitcher {
             match self.mode() {
                 Mode::English => {
                     self.set_mode(Mode::Pinyin);
-                    //println!("EN->PY");
+                    println!("EN->PY");
                 },
                 Mode::Pinyin => {
                     self.set_mode(Mode::English);
-                    //println!("PY->EN");
+                    println!("PY->EN");
                 },
             }
             return ModeSwitcherReturn::Continue(key, true);
         }
 
-        return ModeSwitcherReturn::Done(false);
+        match self.mode() {
+            Mode::English => ModeSwitcherReturn::Done(false),
+            Mode::Pinyin => ModeSwitcherReturn::Continue(key, false),
+        }
     }
 
     pub async fn process_key_event_old(
