@@ -54,7 +54,7 @@ impl ModeSwitcher {
             self.set_last(key);
         }
 
-        println!("last={:?}, current={:?}, is_modifier={}", &last, &key, is_modifier);
+        //println!("last={:?}, current={:?}, is_modifier={}", &last, &key, is_modifier);
 
         if is_modifier || !flags.is_release {
             // User control like ctrl+v that has nothing to do with us.
@@ -68,11 +68,11 @@ impl ModeSwitcher {
             match self.mode() {
                 Mode::English => {
                     self.set_mode(Mode::Pinyin);
-                    println!("EN->PY");
+                    //println!("EN->PY");
                 },
                 Mode::Pinyin => {
                     self.set_mode(Mode::English);
-                    println!("PY->EN");
+                    //println!("PY->EN");
                 },
             }
             return ModeSwitcherReturn::Continue(key, true);
