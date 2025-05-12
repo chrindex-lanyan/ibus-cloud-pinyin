@@ -22,8 +22,8 @@ impl Pipeline {
             .await;
 
         match output {
-            ModeSwitcherReturn::Continue(key) => 
-                        self.dispatcher.on_input(key).await,
+            ModeSwitcherReturn::Continue(key_content) => 
+                        self.dispatcher.on_input(key_content).await,
             ModeSwitcherReturn::Done(has_handled) => 
                         has_handled,
             ModeSwitcherReturn::SwitchMode => {

@@ -126,6 +126,7 @@ impl IBusEngineDesc {
     }
 }
 
+#[derive(Debug)]
 pub struct IBusLookupTable {
     page_size: u32,
     cursor_pos: u32,

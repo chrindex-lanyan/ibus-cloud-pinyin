@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use crate::keys::Key;
+use crate::{keys::Key, mode_switcher::KeyContent};
 
 use super::ibus_proxy::IBusProxy;
 
@@ -15,8 +15,8 @@ impl NumberService {
         NumberService { ibus }
     }
 
-    pub async fn handle_number(&self, key: Key) {
-        let n = key
+    pub async fn handle_number(&self, key_content : KeyContent) {
+        let n = key_content.key
             .to_usize()
             .expect("This key cannot be converted to a usize.");
 

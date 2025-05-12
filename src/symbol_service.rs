@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use tokio::sync::Mutex;
 
-use crate::keys::Key;
+use crate::{keys::Key, mode_switcher::KeyContent};
 
 use super::ibus_proxy::IBusProxy;
 
@@ -15,8 +15,8 @@ impl SymbolService {
         SymbolService { ibus }
     }
 
-    pub async fn handle_symbol(&self, key: Key) {
-        let fw_puctuation = key
+    pub async fn handle_symbol(&self, key_content:KeyContent) {
+        let fw_puctuation = key_content.key
             .to_full_width_string()
             .expect("This key cannot be converted to fullwidth string.");
 

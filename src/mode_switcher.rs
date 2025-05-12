@@ -1,19 +1,36 @@
 use std::{
     fmt::{self},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
+use tokio::sync::Mutex;
+
 use crate::keys::Key;
+
+#[derive(Clone)]
+pub struct KeyContent{
+    pub key : Key,
+    pub flags : Flags,
+    pub key_code : u32,
+}
+
 pub struct ModeSwitcher {
     mode: Arc<Mutex<Mode>>,
-    last: Arc<Mutex<Key>>,
+    last: Arc<Mutex<KeyContent>>,
 }
 
 impl ModeSwitcher {
     pub fn new() -> ModeSwitcher {
         ModeSwitcher {
             mode: Arc::new(Mutex::new(Mode::English)),
-            last: Arc::new(Mutex::new(Key::a)),
+            last: Arc::new(Mutex::new(KeyContent{
+                key : Key::a,
+                flags : Flags {
+                    is_ignored : true,
+                    ..Default::default()
+                },
+                key_code: 0,
+            })),
         }
     }
 
@@ -29,7 +46,7 @@ impl ModeSwitcher {
     pub async fn process_key_event_new(
         &self,
         keyval: u32,
-        _keycode: u32,
+        keycode: u32,
         state: u32,
     ) -> ModeSwitcherReturn {
 
@@ -39,10 +56,16 @@ impl ModeSwitcher {
                 return ModeSwitcherReturn::Done(false);
             },
         };
-        let last = self.last();
+        let last = self.last().await;
+        let flags = self.decode_flag(state);
+        let key_content = KeyContent { 
+            key: key, 
+            flags: flags.clone(), 
+            key_code: keycode 
+        };
+        self.set_last(key_content.clone()).await;
         
         // State flags
-        let flags = self.decode_flag(state);
         let is_modifier = flags.is_ctrl
             || flags.is_alt
             || flags.is_super
@@ -50,60 +73,50 @@ impl ModeSwitcher {
             || flags.is_meta
             || flags.is_lock;
         
-        if is_modifier {
-            // User control like ctrl+v that has nothing to do with us.
+        if is_modifier && self.mode().await == Mode::English{
             return ModeSwitcherReturn::Done(false);
         }
 
-        if !flags.is_release {
-            self.set_last(key);
-            
-            if self.mode() == Mode::Pinyin {
-                return ModeSwitcherReturn::Done(true);
-            }
-        }
-
-        //println!("last={:?}, current={:?}, is_modifier={}", &last, &key, is_modifier);
-
-        if (key == Key::Shift) 
-            && (flags.is_release) 
-            && (last == Key::Shift) 
+        if (key_content.key == Key::Shift) && (key_content.flags.is_release) 
+            && (last.key == Key::Shift) && (!last.flags.is_release)
         {
-            match self.mode() {
+            match self.mode().await {
                 Mode::English => {
-                    self.set_mode(Mode::Pinyin);
-                    //println!("EN->PY");
+                    self.set_mode(Mode::Pinyin).await;
                 },
                 Mode::Pinyin => {
-                    self.set_mode(Mode::English);
-                    //println!("PY->EN");
+                    self.set_mode(Mode::English).await;
                 },
             }
             return ModeSwitcherReturn::SwitchMode;
         }
 
-        match self.mode() {
+        match self.mode().await {
             Mode::English => ModeSwitcherReturn::Done(false),
-            Mode::Pinyin => ModeSwitcherReturn::Continue(key),
+            Mode::Pinyin => {
+                ModeSwitcherReturn::Continue(key_content)
+            },
         }
     }
 
-    fn mode(&self) -> Mode {
-        *self.mode.lock().expect("Failed to lock mode.")
+    async fn mode(&self) -> Mode {
+        let x = self.mode.lock().await;
+        x.clone()
     }
 
-    fn set_mode(&self, val: Mode) {
-        let mut mode = self.mode.lock().expect("Failed to lock mode.");
+    async fn set_mode(&self, val: Mode) {
+        let mut mode = self.mode.lock().await;
         *mode = val;
     }
 
-    fn last(&self) -> Key {
-        *self.last.lock().expect("Failed to lock last.")
+    async fn last(&self) -> KeyContent {
+        let l = self.last.lock().await;
+        l.clone()
     }
 
-    fn set_last(&self, val: Key) {
-        let mut last = self.last.lock().expect("Failed to lock last.");
-        *last = val;
+    async fn set_last(&self, val: KeyContent) {
+        let mut l = self.last.lock().await;
+        *l = val;
     }
 
     fn get_kth_bit(&self, n: u32, k: u32) -> bool {
@@ -135,9 +148,9 @@ impl ModeSwitcher {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum ModeSwitcherReturn {
-    Continue(Key),
+    Continue(KeyContent),
     Done(bool),
     SwitchMode,
 }
@@ -148,28 +161,27 @@ enum Mode {
     Pinyin,
 }
 
-#[allow(dead_code)]
-#[derive(Debug)]
-struct Flags {
-    is_shift: bool,
-    is_lock: bool,
-    is_ctrl: bool,
-    is_alt: bool,
-    is_mod2: bool,
-    is_mod3: bool,
-    is_mod4: bool,
-    is_mod5: bool,
-    is_btn1: bool,
-    is_btn2: bool,
-    is_btn3: bool,
-    is_btn4: bool,
-    is_btn5: bool,
-    is_handled: bool,
-    is_ignored: bool,
-    is_super: bool,
-    is_hyper: bool,
-    is_meta: bool,
-    is_release: bool,
+#[derive(Debug, Default,Clone)]
+pub struct Flags {
+    pub is_shift: bool,
+    pub is_lock: bool,
+    pub is_ctrl: bool,
+    pub is_alt: bool,
+    pub is_mod2: bool,
+    pub is_mod3: bool,
+    pub is_mod4: bool,
+    pub is_mod5: bool,
+    pub is_btn1: bool,
+    pub is_btn2: bool,
+    pub is_btn3: bool,
+    pub is_btn4: bool,
+    pub is_btn5: bool,
+    pub is_handled: bool,
+    pub is_ignored: bool,
+    pub is_super: bool,
+    pub is_hyper: bool,
+    pub is_meta: bool,
+    pub is_release: bool,
 }
 
 impl fmt::Display for Flags {

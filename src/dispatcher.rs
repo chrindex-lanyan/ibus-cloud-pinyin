@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use std::{default, sync::Arc};
 
 use zbus::Connection;
 
 use super::ibus_proxy::IBusProxy;
-use crate::{keys::Key, preedit_service::PreeditService};
+use crate::{candidate::Candidate, keys::Key, mode_switcher::{Flags, KeyContent}, preedit_service::PreeditService};
 use tokio::sync::Mutex;
 
 use super::{
@@ -35,9 +35,9 @@ impl Dispatcher {
         }
     }
 
-    pub async fn on_input(&self, key: Key) -> bool {
+    pub async fn on_input(&self, key_content: KeyContent) -> bool {
         
-        match key {
+        match key_content.key {
             Key::a
             | Key::b
             | Key::c
@@ -63,7 +63,7 @@ impl Dispatcher {
             | Key::w
             | Key::x
             | Key::y
-            | Key::z => return self.handle_pinyin(key).await,
+            | Key::z => return self.handle_pinyin(key_content).await,
 
             Key::_0
             | Key::_1
@@ -76,9 +76,9 @@ impl Dispatcher {
             | Key::_8
             | Key::_9 => {
                 if self.candidate_svc.in_session().await {
-                    return self.handle_select(key).await;
+                    return self.handle_select(key_content).await;
                 } else {
-                    self.number_svc.handle_number(key).await;
+                    self.number_svc.handle_number(key_content).await;
                     return true;
                 }
             }
@@ -95,7 +95,7 @@ impl Dispatcher {
             | Key::BackSlash
             | Key::ExclamationMark
             | Key::Ellipsis => {
-                self.symbol_svc.handle_symbol(key).await;
+                self.symbol_svc.handle_symbol(key_content).await;
                 return true;
             }
 
@@ -108,7 +108,7 @@ impl Dispatcher {
             | Key::Left
             | Key::Right
             | Key::Backspace
-            | Key::Escape => return self.handle_control(key).await,
+            | Key::Escape => return self.handle_control(key_content).await,
             
             Key::Shift | Key::Ctrl | Key::Alt => panic!("Unexpected control keys received."),
             
@@ -141,36 +141,66 @@ impl Dispatcher {
         }
     }
 
-    pub async fn handle_pinyin(&self, key: Key) -> bool {
-        let c = key.to_char().expect("A-Z cannot be converted to a char.");
+    pub async fn handle_pinyin(&self, key_content: KeyContent) -> bool {
+        
+        if key_content.flags.is_release {
+            return true;
+        }
+
+        let c = key_content.key.to_char().expect("A-Z cannot be converted to a char.");
 
         self.preedit_svc.push(c).await;
-        let preedit = self.preedit_svc.to_string().await;
+        
+        //let preedit = self.preedit_svc.to_string().await;
+        //let candidates = self.client.query_candidates(&preedit, self.level[0]).await;
 
-        let candidates = self.client.query_candidates(&preedit, self.level[0]).await;
+        // 
+        // DEBUG //////////////////
+        // 
+        let candidates = vec![
+            Candidate {
+                word: "你好".to_string(),
+                annotation: "".to_string(), // 可以留空或添加调试信息
+                matched_len: None,          // 对于固定列表，通常设为 None
+            },
+            Candidate {
+                word: "世界".to_string(),
+                annotation: "".to_string(),
+                matched_len: None,
+            },
+        ];
 
+        //println!("4. Fetched candidates: {:?}", candidates);
         self.candidate_svc.set_candidates(&candidates).await;
 
         true
     }
 
-    pub async fn handle_select(&self, key: Key) -> bool {
+    pub async fn handle_select(&self, key_content: KeyContent) -> bool {
         self.preedit_svc.clear().await;
 
-        let i = key.to_usize().expect("Failed to conver the key to usize.");
+        let i = key_content.key.to_usize().expect("Failed to conver the key to usize.");
         self.candidate_svc.select(i).await;
         self.candidate_svc.clear().await;
 
         true
     }
 
-    pub async fn handle_control(&self, key: Key) -> bool {
+    pub async fn handle_control(&self, key_content: KeyContent) -> bool {
         if !self.candidate_svc.in_session().await {
             return false;
         }
 
-        match key {
-            Key::Space => return self.handle_select(Key::_1).await,
+        match key_content.key {
+            Key::Space => return self.handle_select(KeyContent { 
+                key: Key::_1, 
+                flags: Flags {
+                    is_ignored : true,
+                    ..Default::default()
+                }, 
+                key_code: 0 ,
+            }).await,
+
             Key::Enter => {
                 let preedit = self.preedit_svc.to_string().await;
                 self.preedit_svc.clear().await;

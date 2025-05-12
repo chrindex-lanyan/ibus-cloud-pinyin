@@ -51,12 +51,25 @@ impl CandidateService {
         let page = state.page;
         let start = 0 + self.lt_size * page; // inclusive
         let end = start + self.lt_size; // exclusive
-        let to_show = if state.candidates.len() <= self.lt_size {
+
+        let to_show = if state.candidates.is_empty() {
+            // 没有候选词，发送空表
             IBusLookupTable::from_nothing()
-        } else {
-            IBusLookupTable::from_candidates(&state.candidates[start..end])
+        } else 
+        {
+            // 计算实际的结束索引，防止越界
+            let actual_end = std::cmp::min(end, state.candidates.len());
+            // 只要 start < actual_end，就表示当前页有候选词
+            if start < actual_end {
+                IBusLookupTable::from_candidates(&state.candidates[start..actual_end])
+            } else {
+                // 理论上 state.page=0 时不会到这里，除非 lt_size=0
+                IBusLookupTable::from_nothing()
+            }
         };
 
+        //println!("Candidates to show in table: {:?}", to_show); 
+        
         drop(state);
 
         self.ibus
@@ -69,13 +82,27 @@ impl CandidateService {
     pub async fn page_into(&self) -> (bool, Option<usize>) {
         let mut state = self.state.lock().await;
 
-        state.page += 1;
-        let start = 0 + state.page * self.lt_size;
-        let end = start + self.lt_size;
-        if start >= state.candidates.len() || end > state.candidates.len() {
-            return (false, Some(self.lt_size * (state.page + 1))); // (IsEnough, HowManyAtLeastDoWeNeed)
+        let potential_start = (state.page + 1) * self.lt_size;
+        if potential_start >= state.candidates.len() {
+             // 需要更多候选词
+            drop(state); // 释放锁
+            // 计算至少需要多少个才能填满下一页
+            let min_needed = potential_start + 1; // 至少需要有下一页的第一个
+            return (false, Some(min_needed)); // (IsEnough, HowManyAtLeastDoWeNeed)
         }
-        let to_show = IBusLookupTable::from_candidates(&state.candidates[start..end]);
+
+        // 确认可以翻页
+        state.page += 1;
+        let start = state.page * self.lt_size;
+        let end = start + self.lt_size;
+        let actual_end = std::cmp::min(end, state.candidates.len()); // 边界检查
+
+        let to_show = if start < actual_end {
+            IBusLookupTable::from_candidates(&state.candidates[start..actual_end])
+        } else {
+            // 理论上不应发生，因为上面检查过 potential_start
+            IBusLookupTable::from_nothing()
+        };
 
         drop(state);
 
@@ -91,12 +118,20 @@ impl CandidateService {
         let mut state = self.state.lock().await;
 
         if state.page == 0 {
-            return;
+            drop(state); // 释放锁
+            return; // 已经是第一页
         }
         state.page -= 1;
-        let start = 0 + state.page * self.lt_size;
+        let start = state.page * self.lt_size;
         let end = start + self.lt_size;
-        let to_show = IBusLookupTable::from_candidates(&state.candidates[start..end]);
+        // 对于回翻，end 不会越界，因为之前的页肯定存在
+        let actual_end = std::cmp::min(end, state.candidates.len()); // 仍然做检查以防万一
+
+        let to_show = if start < actual_end {
+            IBusLookupTable::from_candidates(&state.candidates[start..actual_end])
+        } else {
+            IBusLookupTable::from_nothing()
+        };
 
         drop(state);
 
